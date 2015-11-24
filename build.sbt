@@ -36,12 +36,15 @@ scalacOptions ++= Seq(
 
 libraryDependencies ++= Seq(
   "com.android.support" % "appcompat-v7" % "21.0.2",
-  "org.robolectric" % "robolectric" % "3.0" % "test",
-  "org.scalatest" %% "scalatest" % "2.2.1" % "test",
-  "junit" % "junit" % "4.11" % "test",
-  "com.novocode" % "junit-interface" % "0.11" % "test",
-  "org.apache.maven" % "maven-ant-tasks" % "2.1.3" % "test"
+  //"org.robolectric" % "robolectric" % "3.0" % "test",
+  "com.geteit" %% "robotest" % "0.12" % Test,
+  "org.scalatest" %% "scalatest" % "2.2.4" % "test",
+  "org.scalamock" %% "scalamock-scalatest-support" % "3.2.1" % "test"
 )
+
+fork in Test := true
+
+javaOptions in Test ++= Seq("-XX:MaxPermSize=2048M", "-XX:+CMSClassUnloadingEnabled")   // usually needed due to using forked tests
 
 unmanagedClasspath in Test ++= (bootClasspath in Android).value
 

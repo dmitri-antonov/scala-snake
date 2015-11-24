@@ -1,7 +1,7 @@
 package com.scalagames.snake
 
 import android.app.Activity
-import android.content.pm.ActivityInfo
+//import android.content.pm.ActivityInfo
 import android.os.Bundle
 import com.scalagames.snake.Calculator.{Resume, Pause}
 
@@ -13,10 +13,12 @@ class SnakeActivity extends Activity {
 
   private var once = false
 
+
+
   override def onCreate(savedInstanceState: Bundle) {
     super.onCreate(savedInstanceState)
 
-    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR)
+    //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR)
     //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
     setContentView(R.layout.main)
   }

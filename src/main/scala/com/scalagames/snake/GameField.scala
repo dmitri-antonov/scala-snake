@@ -3,9 +3,11 @@ package com.scalagames.snake
 import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
 
+import android.app.Activity
 import android.content.Context
 import android.graphics.Paint.Align
 import android.graphics.{Color, Paint, Canvas}
+import android.hardware.{SensorManager, SensorEvent, SensorEventListener, Sensor}
 import android.os.{Message, Looper, Handler}
 import android.util.{AttributeSet, Log}
 import android.view.GestureDetector.SimpleOnGestureListener
@@ -20,7 +22,7 @@ object GameField {
   case object Restart
 
   case class GameFieldSize(width: Int, height: Int)
-  case class CalculatorState(calculator: Calculator, thread: Thread)
+  case class CalculatorState(calculator: CalculatorThread, thread: Thread)
 }
 
 class GameField(context: Context, attrs: AttributeSet) extends View(context, attrs) {
@@ -53,6 +55,9 @@ class GameField(context: Context, attrs: AttributeSet) extends View(context, att
 
   private var gameState = GameState()
 
+  val sensorManager = getContext.asInstanceOf[Activity].getSystemService(Context.SENSOR_SERVICE).asInstanceOf[SensorManager]
+  val sensor        = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+
   val uiHandler = new Handler(Looper.getMainLooper) {
     override def handleMessage(msg: Message) = msg.obj match {
       case UiChanged(newGameState) => updateUI(Some(newGameState))
@@ -68,20 +73,79 @@ class GameField(context: Context, attrs: AttributeSet) extends View(context, att
   private def restartGame(): CalculatorState = {
     Log.e(TAG, "restarting game")
 
-    val calculator = new Calculator(GameFieldSize(widthInBlocks, heightInBlocks), uiHandler, period = 0.5 second)
+    val calculator = new CalculatorThread(GameFieldSize(widthInBlocks, heightInBlocks), RealUI(uiHandler), period = 1 second, GameState())
     val calcThread = new Thread(calculator)
     calcThread.start()
 
-    setOnTouchListener(new ShapeSwipeListener)
+    sensorManager.registerListener(TiltListener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+//    setOnTouchListener(new ShapeSwipeListener)
     CalculatorState(calculator, calcThread)
   }
 
-  class ShapeSwipeListener extends SwipeListener(context) {
-    override def onSwipeLeft()  { notifyCalculator(Calculator.MoveLeft) }
-    override def onSwipeRight() { notifyCalculator(Calculator.MoveRight) }
-    override def onSwipeUp()    { notifyCalculator(Calculator.MoveUp) }
-    override def onSwipeDown()  { notifyCalculator(Calculator.MoveDown) }
+  object TiltListener extends SensorEventListener {
+    var lastTime = System.currentTimeMillis()
+    val period   = 300 millis
+    override def onSensorChanged(event: SensorEvent) {
+//      val sensor = event.sensor.toString
+//      val acc    = event.accuracy
+//      val time   = event.timestamp
+
+//      if (gameState.gameOver) {
+//        sensorManager.unregisterListener(this, sensor)
+//        Log.e(TAG, "stopped sensor")
+//      }
+
+      if ((System.currentTimeMillis() - lastTime) > period.toMillis) {
+
+        val x = event.values(0)
+        val y = event.values(1)
+        val z = event.values(2)
+
+        val diff = 1.5
+
+        Log.e("ACC", s"SENSOR CHANGED: x = $x, y = $y, z = $z")
+
+        if ((Math.abs(x) - Math.abs(y)) > diff) {
+          if (x < 0) {
+            Log.e("ACC", "TILTED RIGHT")
+            //notifyCalculator(Calculator.MoveRight)
+            notifyCalculator(Calculator.MoveUp)
+          }
+          else {
+            Log.e("ACC", "TILTED LEFT")
+            //notifyCalculator(Calculator.MoveLeft)
+            notifyCalculator(Calculator.MoveDown)
+          }
+        }
+        else if ((Math.abs(y) - Math.abs(x)) > diff) {
+          if (y < 0) {
+            Log.e("ACC", "TILTED UP")
+            //notifyCalculator(Calculator.MoveUp)
+            notifyCalculator(Calculator.MoveLeft)
+          }
+          else {
+            Log.e("ACC", "TILTED DOWN")
+            //notifyCalculator(Calculator.MoveDown)
+            notifyCalculator(Calculator.MoveRight)
+          }
+        }
+        else {
+          Log.e("ACC", "NO TILT")
+        }
+      }
+    }
+
+    override def onAccuracyChanged(sensor: Sensor, accuracy: Int) {
+      Log.e("ACC", s"ACCURACY CHANGED: sensor ${sensor}, accuracy ${accuracy}")
+    }
   }
+
+//  class ShapeSwipeListener extends SwipeListener(context) {
+//    override def onSwipeLeft()  { notifyCalculator(Calculator.MoveLeft) }
+//    override def onSwipeRight() { notifyCalculator(Calculator.MoveRight) }
+//    override def onSwipeUp()    { notifyCalculator(Calculator.MoveUp) }
+//    override def onSwipeDown()  { notifyCalculator(Calculator.MoveDown) }
+//  }
 
   def notifyCalculator(cmd: Calculator.UserCommand) {
     val m = new Message
